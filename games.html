@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Humaan Sciences — Lab</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --paper:#F7F5F0; --paper2:#EFEBE2; --ink:#1E2B23; --ink-soft:#46524A;
+    --sage:#5C7A6B; --sage-dark:#3F5A4D; --clay:#B0735A; --line:#DAD4C5;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;}
+  header{
+    border-bottom:1px solid var(--line);padding:18px 6vw;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:1.05rem;}
+  .brand svg{width:26px;height:26px;}
+  a.back{font-size:0.85rem;color:var(--ink-soft);text-decoration:none;}
+  a.back:hover{text-decoration:underline;}
+
+  main{max-width:1000px;margin:0 auto;padding:50px 6vw 80px;}
+  .label{font-size:0.74rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--sage-dark);margin-bottom:10px;}
+  h1{font-family:'Source Serif 4',Georgia,serif;font-size:2rem;margin:0 0 8px;}
+  .sub{color:var(--ink-soft);margin:0 0 40px;font-size:0.95rem;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;}
+  .card{
+    border:1px solid var(--line);background:var(--paper2);border-radius:5px;
+    overflow:hidden;text-decoration:none;color:var(--ink);display:block;
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(30,43,35,0.12);}
+  .thumb{
+    height:120px;display:flex;align-items:center;justify-content:center;
+    font-size:2.4rem;color:#fff;
+  }
+  .card .info{padding:14px 16px 16px;}
+  .card h3{margin:0 0 4px;font-size:1.02rem;}
+  .card p{margin:0;font-size:0.8rem;color:var(--ink-soft);}
+
+  .t1{background:linear-gradient(135deg,#5C7A6B,#3F5A4D);}
+  .t2{background:linear-gradient(135deg,#B0735A,#8a5640);}
+  .t3{background:linear-gradient(135deg,#46647a,#2c4255);}
+  .t4{background:linear-gradient(135deg,#7a5a8a,#523b61);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 34 34" fill="none">
+      <circle cx="17" cy="17" r="3" fill="#1E2B23"/>
+      <ellipse cx="17" cy="17" rx="14" ry="6" stroke="#1E2B23" stroke-width="1.4"/>
+      <ellipse cx="17" cy="17" rx="14" ry="6" stroke="#1E2B23" stroke-width="1.4" transform="rotate(60 17 17)"/>
+      <ellipse cx="17" cy="17" rx="14" ry="6" stroke="#1E2B23" stroke-width="1.4" transform="rotate(120 17 17)"/>
+    </svg>
+    Humaan Sciences
+  </div>
+  <a class="back" href="index.html">← Back home</a>
+</header>
+
+<main>
+  <div class="label">Lab Simulations</div>
+  <h1>Interactive Modules</h1>
+  <p class="sub">Hands-on simulations for the lab section. Pick a module to begin.</p>
+
+  <div class="grid">
+    <a class="card" href="flagbearers/index.html">
+      <div class="thumb t1">🏹</div>
+      <div class="info">
+        <h3>Flagbearers</h3>
+        <p>3D capture-the-flag — ruins, bows, two teams.</p>
+      </div>
+    </a>
+    <a class="card" href="games/2048/index.html">
+      <div class="thumb t2">🔢</div>
+      <div class="info">
+        <h3>2048</h3>
+        <p>Merge tiles to reach the number 2048.</p>
+      </div>
+    </a>
+    <a class="card" href="games/snake/index.html">
+      <div class="thumb t3">🐍</div>
+      <div class="info">
+        <h3>Snake</h3>
+        <p>Classic grid snake, speeds up as you grow.</p>
+      </div>
+    </a>
+    <a class="card" href="games/blocks/index.html">
+      <div class="thumb t4">🧩</div>
+      <div class="info">
+        <h3>Block Stacker</h3>
+        <p>Falling-block puzzle, clear lines to score.</p>
+      </div>
+    </a>
+  </div>
+</main>
+
+<script src="site-config.js"></script>
+<script>
+  // Panic shortcut: Shift+Q instantly leaves this page, no confirmation, no delay.
+  window.addEventListener('keydown', (e) => {
+    if (e.shiftKey && e.code === 'KeyQ') {
+      window.location.replace(SITE_CONFIG.panicRedirect);
+    }
+  });
+</script>
+</body>
+</html>
