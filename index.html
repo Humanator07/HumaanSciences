@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Snake — Humaan Sciences Lab</title>
+<style>
+  :root{ --bg:#EFEBE2; --ink:#1E2B23; --board:#22301f; --snake:#5C7A6B; --head:#3F5A4D; --food:#B0735A; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:'Inter',-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;
+    touch-action:none;-webkit-user-select:none;user-select:none;}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center;padding:16px 5vw;box-sizing:border-box;}
+  a{color:#46524A;text-decoration:none;font-size:0.85rem;}
+  .scoreBox{background:#3F5A4D;color:#fff;padding:8px 16px;border-radius:4px;text-align:center;}
+  .scoreBox .lbl{font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;opacity:0.8;}
+  .scoreBox .val{font-size:1.2rem;font-weight:700;}
+  h1{font-size:1.4rem;margin:4px 0 14px;}
+  #wrap{width:min(92vw,440px);}
+  canvas{width:100%;background:var(--board);border-radius:8px;display:block;}
+  .msg{margin-top:14px;font-size:0.85rem;color:#46524A;text-align:center;}
+  #restart{margin-top:14px;background:#3F5A4D;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-family:inherit;font-size:0.85rem;cursor:pointer;}
+  #overlay{position:fixed;inset:0;background:rgba(30,43,35,0.7);display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;z-index:10;}
+  #overlay.show{display:flex;}
+  #overlay h2{font-size:1.6rem;margin-bottom:8px;}
+
+  .mobileBtns{display:none;margin-top:18px;}
+  .dpad{display:grid;grid-template-columns:56px 56px 56px;grid-template-rows:56px 56px 56px;gap:6px;}
+  .dpad button{border:none;border-radius:6px;background:#3F5A4D;color:#fff;font-size:1.2rem;}
+  .dpad .empty{background:transparent;}
+  @media (max-width:760px){ .mobileBtns{display:flex;justify-content:center;} }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="../../games.html">← Back to Lab</a>
+  <div class="scoreBox"><div class="lbl">Score</div><div class="val" id="score">0</div></div>
+</header>
+
+<h1>Snake</h1>
+<div id="wrap"><canvas id="cv" width="440" height="440"></canvas></div>
+<div class="msg">Arrow keys / WASD to steer. Eat the marks, avoid the walls and yourself.</div>
+<button id="restart">Restart</button>
+
+<div class="mobileBtns">
+  <div class="dpad">
+    <div class="empty"></div><button data-d="up">↑</button><div class="empty"></div>
+    <button data-d="left">←</button><div class="empty"></div><button data-d="right">→</button>
+    <div class="empty"></div><button data-d="down">↓</button><div class="empty"></div>
+  </div>
+</div>
+
+<div id="overlay"><h2 id="overTitle">Game Over</h2><button id="overRestart">Try Again</button></div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const GRID = 20;
+let cell;
+let snake, dir, nextDir, food, score, alive, tickMs, loopTimer;
+
+function resizeCanvas(){
+  const rect = cv.parentElement.getBoundingClientRect();
+  cv.width = rect.width; cv.height = rect.width;
+  cell = cv.width / GRID;
+  draw();
+}
+window.addEventListener('resize', resizeCanvas);
+
+function reset(){
+  snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir = {x:1,y:0}; nextDir = {x:1,y:0};
+  score = 0; alive = true; tickMs = 140;
+  document.getElementById('score').textContent = 0;
+  document.getElementById('overlay').classList.remove('show');
+  placeFood();
+  resizeCanvas();
+  clearTimeout(loopTimer);
+  loop();
+}
+
+function placeFood(){
+  let pos;
+  do {
+    pos = {x:Math.floor(Math.random()*GRID), y:Math.floor(Math.random()*GRID)};
+  } while (snake.some(s=>s.x===pos.x&&s.y===pos.y));
+  food = pos;
+}
+
+function loop(){
+  if (!alive) return;
+  step();
+  draw();
+  loopTimer = setTimeout(loop, tickMs);
+}
+
+function step(){
+  dir = nextDir;
+  const head = {x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+  if (head.x<0||head.x>=GRID||head.y<0||head.y>=GRID || snake.some(s=>s.x===head.x&&s.y===head.y)){
+    alive=false;
+    document.getElementById('overTitle').textContent = 'Game Over — Score '+score;
+    document.getElementById('overlay').classList.add('show');
+    return;
+  }
+  snake.unshift(head);
+  if (head.x===food.x && head.y===food.y){
+    score++;
+    document.getElementById('score').textContent = score;
+    tickMs = Math.max(60, 140 - score*4);
+    placeFood();
+  } else {
+    snake.pop();
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  // food
+  ctx.fillStyle = '#B0735A';
+  roundRect(food.x*cell+cell*0.15, food.y*cell+cell*0.15, cell*0.7, cell*0.7, 4);
+  ctx.fill();
+  // snake
+  snake.forEach((s,i)=>{
+    ctx.fillStyle = i===0 ? '#3F5A4D' : '#5C7A6B';
+    roundRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2, 4);
+    ctx.fill();
+  });
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function setDir(nx,ny){
+  if (nx === -dir.x && ny === -dir.y) return; // no reverse
+  nextDir = {x:nx,y:ny};
+}
+
+window.addEventListener('keydown', e=>{
+  if (e.shiftKey && e.code === 'KeyQ'){ window.location.replace('../../index.html'); return; }
+  const map = {
+    ArrowUp:[0,-1], KeyW:[0,-1], ArrowDown:[0,1], KeyS:[0,1],
+    ArrowLeft:[-1,0], KeyA:[-1,0], ArrowRight:[1,0], KeyD:[1,0]
+  };
+  if (map[e.code]){ e.preventDefault(); setDir(map[e.code][0], map[e.code][1]); }
+});
+
+document.querySelectorAll('.dpad button[data-d]').forEach(btn=>{
+  btn.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    const d = btn.dataset.d;
+    if (d==='up') setDir(0,-1);
+    if (d==='down') setDir(0,1);
+    if (d==='left') setDir(-1,0);
+    if (d==='right') setDir(1,0);
+  }, {passive:false});
+  btn.addEventListener('click', ()=>{
+    const d = btn.dataset.d;
+    if (d==='up') setDir(0,-1);
+    if (d==='down') setDir(0,1);
+    if (d==='left') setDir(-1,0);
+    if (d==='right') setDir(1,0);
+  });
+});
+
+// swipe controls
+let sx=0, sy=0;
+cv.addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; sy=e.touches[0].clientY; }, {passive:true});
+cv.addEventListener('touchend', e=>{
+  const dx = e.changedTouches[0].clientX-sx, dy = e.changedTouches[0].clientY-sy;
+  if (Math.max(Math.abs(dx),Math.abs(dy))<20) return;
+  if (Math.abs(dx)>Math.abs(dy)) setDir(dx>0?1:-1,0);
+  else setDir(0,dy>0?1:-1);
+}, {passive:true});
+
+document.getElementById('restart').addEventListener('click', reset);
+document.getElementById('overRestart').addEventListener('click', reset);
+
+reset();
+</script>
+</body>
+</html>
