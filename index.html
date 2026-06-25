@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Block Stacker — Humaan Sciences Lab</title>
+<style>
+  :root{ --bg:#EFEBE2; --ink:#1E2B23; --board:#22301f; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:'Inter',-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;
+    touch-action:none;-webkit-user-select:none;user-select:none;}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center;padding:16px 5vw;box-sizing:border-box;}
+  a{color:#46524A;text-decoration:none;font-size:0.85rem;}
+  .scoreBox{background:#3F5A4D;color:#fff;padding:8px 16px;border-radius:4px;text-align:center;}
+  .scoreBox .lbl{font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;opacity:0.8;}
+  .scoreBox .val{font-size:1.2rem;font-weight:700;}
+  h1{font-size:1.4rem;margin:4px 0 14px;}
+  #wrap{width:min(70vw,300px);}
+  canvas{width:100%;background:var(--board);border-radius:8px;display:block;}
+  .msg{margin-top:14px;font-size:0.85rem;color:#46524A;text-align:center;}
+  #restart{margin-top:14px;background:#3F5A4D;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-family:inherit;font-size:0.85rem;cursor:pointer;}
+  #overlay{position:fixed;inset:0;background:rgba(30,43,35,0.7);display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;z-index:10;}
+  #overlay.show{display:flex;}
+  #overlay h2{font-size:1.6rem;margin-bottom:8px;}
+
+  .mobileBtns{display:none;margin-top:18px;gap:10px;}
+  .mobileBtns button{width:54px;height:54px;border:none;border-radius:8px;background:#3F5A4D;color:#fff;font-size:1.3rem;}
+  @media (max-width:760px){ .mobileBtns{display:flex;} }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="../../games.html">← Back to Lab</a>
+  <div class="scoreBox"><div class="lbl">Score</div><div class="val" id="score">0</div></div>
+</header>
+
+<h1>Block Stacker</h1>
+<div id="wrap"><canvas id="cv" width="300" height="600"></canvas></div>
+<div class="msg">Arrow keys / WASD: move &amp; rotate. Down arrow to drop. Clear full lines.</div>
+<button id="restart">Restart</button>
+
+<div class="mobileBtns">
+  <button data-a="left">←</button>
+  <button data-a="rotate">⟳</button>
+  <button data-a="right">→</button>
+  <button data-a="down">↓</button>
+</div>
+
+<div id="overlay"><h2 id="overTitle">Game Over</h2><button id="overRestart">Try Again</button></div>
+
+<script>
+const COLS = 10, ROWS = 20;
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let cell;
+
+const SHAPES = {
+  I: [[1,1,1,1]],
+  O: [[1,1],[1,1]],
+  T: [[1,1,1],[0,1,0]],
+  L: [[1,0],[1,0],[1,1]],
+  J: [[0,1],[0,1],[1,1]],
+  S: [[0,1,1],[1,1,0]],
+  Z: [[1,1,0],[0,1,1]]
+};
+const COLORS = { I:'#5C7A6B', O:'#B0735A', T:'#7a5a8a', L:'#46647a', J:'#c79a4b', S:'#4d8a5c', Z:'#a64a3c' };
+
+let board, current, score, alive, dropTimer, dropMs;
+
+function resizeCanvas(){
+  const rect = cv.parentElement.getBoundingClientRect();
+  cv.width = rect.width;
+  cv.height = rect.width * (ROWS/COLS);
+  cell = cv.width / COLS;
+  draw();
+}
+window.addEventListener('resize', resizeCanvas);
+
+function newBoard(){ return Array.from({length:ROWS},()=>Array(COLS).fill(null)); }
+
+function spawnPiece(){
+  const keys = Object.keys(SHAPES);
+  const key = keys[Math.floor(Math.random()*keys.length)];
+  const shape = SHAPES[key].map(r=>r.slice());
+  current = { key, shape, x: Math.floor(COLS/2)-Math.ceil(shape[0].length/2), y:0 };
+  if (collides(current.shape, current.x, current.y)){
+    endGame();
+  }
+}
+
+function rotate(shape){
+  const rows = shape.length, cols = shape[0].length;
+  const res = Array.from({length:cols},()=>Array(rows).fill(0));
+  for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) res[c][rows-1-r] = shape[r][c];
+  return res;
+}
+
+function collides(shape, ox, oy){
+  for (let r=0;r<shape.length;r++){
+    for (let c=0;c<shape[r].length;c++){
+      if (!shape[r][c]) continue;
+      const x = ox+c, y = oy+r;
+      if (x<0||x>=COLS||y>=ROWS) return true;
+      if (y>=0 && board[y][x]) return true;
+    }
+  }
+  return false;
+}
+
+function lockPiece(){
+  current.shape.forEach((row,r)=>row.forEach((v,c)=>{
+    if (v){
+      const x = current.x+c, y = current.y+r;
+      if (y>=0) board[y][x] = current.key;
+    }
+  }));
+  clearLines();
+  spawnPiece();
+}
+
+function clearLines(){
+  let cleared = 0;
+  for (let r=ROWS-1;r>=0;r--){
+    if (board[r].every(v=>v)){
+      board.splice(r,1);
+      board.unshift(Array(COLS).fill(null));
+      cleared++; r++;
+    }
+  }
+  if (cleared){
+    score += [0,100,300,500,800][cleared] || cleared*200;
+    document.getElementById('score').textContent = score;
+    dropMs = Math.max(180, dropMs - cleared*8);
+  }
+}
+
+function tryMove(dx,dy){
+  if (!collides(current.shape, current.x+dx, current.y+dy)){
+    current.x += dx; current.y += dy;
+    return true;
+  }
+  return false;
+}
+
+function tryRotate(){
+  const r = rotate(current.shape);
+  if (!collides(r, current.x, current.y)){ current.shape = r; }
+  else if (!collides(r, current.x-1, current.y)){ current.shape=r; current.x--; }
+  else if (!collides(r, current.x+1, current.y)){ current.shape=r; current.x++; }
+}
+
+function dropOne(){
+  if (!tryMove(0,1)){
+    lockPiece();
+  }
+  draw();
+}
+
+function hardDrop(){
+  while (tryMove(0,1)){}
+  lockPiece();
+  draw();
+}
+
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  for (let r=0;r<ROWS;r++){
+    for (let c=0;c<COLS;c++){
+      if (board[r][c]){
+        ctx.fillStyle = COLORS[board[r][c]];
+        ctx.fillRect(c*cell+1, r*cell+1, cell-2, cell-2);
+      }
+    }
+  }
+  if (current){
+    ctx.fillStyle = COLORS[current.key];
+    current.shape.forEach((row,r)=>row.forEach((v,c)=>{
+      if (v){
+        const x = current.x+c, y = current.y+r;
+        if (y>=0) ctx.fillRect(x*cell+1, y*cell+1, cell-2, cell-2);
+      }
+    }));
+  }
+}
+
+function gameLoop(){
+  if (!alive) return;
+  dropOne();
+  dropTimer = setTimeout(gameLoop, dropMs);
+}
+
+function reset(){
+  board = newBoard();
+  score = 0; alive = true; dropMs = 600;
+  document.getElementById('score').textContent = 0;
+  document.getElementById('overlay').classList.remove('show');
+  clearTimeout(dropTimer);
+  spawnPiece();
+  resizeCanvas();
+  gameLoop();
+}
+
+function endGame(){
+  alive = false;
+  clearTimeout(dropTimer);
+  document.getElementById('overTitle').textContent = 'Game Over — Score '+score;
+  document.getElementById('overlay').classList.add('show');
+}
+
+window.addEventListener('keydown', e=>{
+  if (e.shiftKey && e.code === 'KeyQ'){ window.location.replace('../../index.html'); return; }
+  if (!alive) return;
+  const map = {
+    ArrowLeft:()=>tryMove(-1,0), KeyA:()=>tryMove(-1,0),
+    ArrowRight:()=>tryMove(1,0), KeyD:()=>tryMove(1,0),
+    ArrowUp:()=>tryRotate(), KeyW:()=>tryRotate(),
+    ArrowDown:()=>hardDrop(), KeyS:()=>hardDrop(),
+  };
+  if (map[e.code]){ e.preventDefault(); map[e.code](); draw(); }
+});
+
+document.querySelectorAll('.mobileBtns button').forEach(btn=>{
+  const act = ()=>{
+    if (!alive) return;
+    const a = btn.dataset.a;
+    if (a==='left') tryMove(-1,0);
+    if (a==='right') tryMove(1,0);
+    if (a==='rotate') tryRotate();
+    if (a==='down') hardDrop();
+    draw();
+  };
+  btn.addEventListener('touchstart', e=>{ e.preventDefault(); act(); }, {passive:false});
+  btn.addEventListener('click', act);
+});
+
+document.getElementById('restart').addEventListener('click', reset);
+document.getElementById('overRestart').addEventListener('click', reset);
+
+reset();
+</script>
+</body>
+</html>
